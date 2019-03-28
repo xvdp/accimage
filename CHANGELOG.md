@@ -1,3 +1,6 @@
+# v0.1.1.fork
+* added .copy() method
+
 # v0.1.1
 
 * Bug fix: Horizontal crops prior to v0.1.1 didn't work.
