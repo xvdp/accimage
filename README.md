@@ -16,6 +16,10 @@ Operations implemented:
 - `Image.crop((left, upper, right, lower))`
 - `Image.transpose(PIL.Image.FLIP_LEFT_RIGHT)`
 
+Modifications xvdp:
+accimage does all operations in place,
+- `Image.copy()`
+
 Enable the torchvision accimage backend with:
 
 ```python

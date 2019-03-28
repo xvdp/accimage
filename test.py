@@ -65,3 +65,10 @@ def test_flipping():
     assert image.width == 1920
     assert image.height == 931
     np.testing.assert_array_equal(new_image_np[:, ::-1, :], original_image_np)
+
+def test_copy():
+    image = accimage.Image("chicago.jpg")
+    image_copy = image.copy()
+
+    image.crop(box=(50, 50, 150, 150))
+    assert image.width != image_copy.width

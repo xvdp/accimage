@@ -10,6 +10,8 @@ static struct PyMemberDef Image_members[] = {
     { NULL }  /* Sentinel */
 };
 
+static PyTypeObject Image_Type;
+
 static PyObject* Image_getsize(ImageObject* self, void* closure) {
     return Py_BuildValue("ii", self->width, self->height);
 }
@@ -187,11 +189,31 @@ cleanup:
     }
 }
 
+static PyObject* Image_copy(ImageObject* self, PyObject *args, PyObject* kwds) {
+    /*xvdp added method to return copy of accimage.Image()*/
+    ImageObject* self_copy;
+    self_copy = PyObject_New(ImageObject, &Image_Type);
+
+    self_copy->buffer = malloc(self->channels * self->width * self->height);
+    memcpy(self_copy->buffer, self->buffer, strlen((char*)self->buffer) + 1);
+
+    self_copy->channels = self->channels;
+    self_copy->height = self->height;
+    self_copy->width = self->width;
+    self_copy->row_stride = self->row_stride;
+    self_copy->y_offset = self->y_offset;
+    self_copy->x_offset = self->x_offset;
+    
+    return (PyObject*) self_copy; 
+}
+
 static PyMethodDef Image_methods[] = {
     { "resize",    (PyCFunction) Image_resize,    METH_VARARGS | METH_KEYWORDS, "Scale image to new size." },
     { "crop",      (PyCFunction) Image_crop,      METH_VARARGS | METH_KEYWORDS, "Crop image to new size." },
     { "transpose", (PyCFunction) Image_transpose, METH_VARARGS | METH_KEYWORDS, "Transpose/flip/rotate image." },
     { "copyto",    (PyCFunction) Image_copyto,    METH_VARARGS | METH_KEYWORDS, "Copy data to a buffer." },
+    { "copy",      (PyCFunction) Image_copy,      METH_VARARGS | METH_KEYWORDS, "Deep copy of Image" },
+
     { NULL }  /* Sentinel */
 };
 
