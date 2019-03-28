@@ -5,7 +5,7 @@
 
 
 An accelerated Image loader and preprocessor leveraging [Intel
-IPP](https://software.intel.com/en-us/intel-ipp).
+IPP](https://software.intel.com/en-us/intel-ipp) and [jpeg-turbo](https://libjpeg-turbo.org/).
 
 accimage mimics the PIL API and can be used as a backend for
 [`torchvision`](https://github.com/pytorch/vision).
@@ -32,4 +32,9 @@ accimage is available on conda-forge, simply run the following to install
 
 ```
 $ conda install -c conda-forge accimage
+```
+## Compilation
+Dowload Intel IPP and jpeg-turbo; install. Ensure that include paths exist.
+```
+$ python setup.py install
 ```
