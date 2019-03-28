@@ -1,6 +1,6 @@
 #include <Python.h>
 #include <structmember.h>
-
+#include <stdbool.h>
 #include "accimage.h"
 
 static struct PyMemberDef Image_members[] = {
@@ -12,6 +12,7 @@ static struct PyMemberDef Image_members[] = {
 
 static PyTypeObject Image_Type;
 
+
 static PyObject* Image_getsize(ImageObject* self, void* closure) {
     return Py_BuildValue("ii", self->width, self->height);
 }
@@ -21,14 +22,46 @@ static PyGetSetDef Image_getseters[] = {
     { NULL }  /* Sentinel */
 };
 
+static ImageObject* _copy(ImageObject* self){
+    ImageObject* self_copy;
+    self_copy = PyObject_New(ImageObject, &Image_Type);
+
+    unsigned char* buffer = NULL;
+    size_t size = self->channels * self->width * self->height;
+    buffer = malloc(size);
+    if (buffer == NULL) {
+        PyErr_NoMemory();
+        free(buffer);
+        return NULL;
+    }
+    memcpy(buffer, self->buffer, size);
+    self_copy->buffer = buffer;
+    buffer = NULL;
+    free(buffer);
+
+    self_copy->channels = self->channels;
+    self_copy->height = self->height;
+    self_copy->width = self->width;
+    self_copy->row_stride = self->row_stride;
+    self_copy->y_offset = self->y_offset;
+    self_copy->x_offset = self->x_offset;
+
+    return self_copy; 
+}
+
+static PyObject* Image_copy(ImageObject* self, PyObject *args, PyObject* kwds) {
+    return (PyObject*) _copy(self);
+}
+
 static PyObject* Image_resize(ImageObject* self, PyObject* args, PyObject* kwds) {
-    static char* argnames[] = { "size", "interpolation", NULL };
+    static char* argnames[] = { "size", "interpolation", "in_place", NULL };
     PyObject* size = NULL;
     int interpolation = 0;
+    bool in_place = false;
     int antialiasing = 1;
     int new_height, new_width;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|i", argnames, &size, &interpolation)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|ip", argnames, &size, &interpolation, &in_place)) {
         return NULL;
     }
 
@@ -45,22 +78,35 @@ static PyObject* Image_resize(ImageObject* self, PyObject* args, PyObject* kwds)
     }
 
     // TODO: consider interpolation parameter
-    image_resize(self, new_height, new_width, antialiasing);
+    if (in_place){
+        image_resize(self, new_height, new_width, antialiasing);
+        
+        if (PyErr_Occurred()) {
+            return NULL;
+        } else {
+            Py_INCREF(self);
+            return (PyObject*) self;
+        }
+    }
+
+    ImageObject* self_copy = _copy(self);
+    image_resize(self_copy, new_height, new_width, antialiasing);
 
     if (PyErr_Occurred()) {
         return NULL;
     } else {
         Py_INCREF(self);
-        return (PyObject*) self;
+        return (PyObject*) self_copy;
     }
 }
 
 static PyObject* Image_crop(ImageObject* self, PyObject* args, PyObject* kwds) {
-    static char* argnames[] = { "box", NULL };
+    static char* argnames[] = { "box", "in_place", NULL };
     PyObject* box_object;
+    bool in_place = false;
     int left, upper, right, lower;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", argnames, &box_object)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|p", argnames, &box_object, &in_place)) {
         return NULL;
     }
 
@@ -95,28 +141,52 @@ static PyObject* Image_crop(ImageObject* self, PyObject* args, PyObject* kwds) {
         return PyErr_Format(PyExc_ValueError, "lower coordinate (%d) does not exceed upper coordinate (%d)",
             lower, upper);
     }
+    if (in_place){
+        self->y_offset += upper;
+        self->x_offset += left;
+        self->height = lower - upper;
+        self->width = right - left;
 
-    self->y_offset += upper;
-    self->x_offset += left;
-    self->height = lower - upper;
-    self->width = right - left;
+        Py_INCREF(self);
+        return (PyObject*) self;
+    }
 
-    Py_INCREF(self);
-    return (PyObject*) self;
+    ImageObject* self_copy = _copy(self);
+    self_copy->y_offset += upper;
+    self_copy->x_offset += left;
+    self_copy->height = lower - upper;
+    self_copy->width = right - left;
+    Py_INCREF(self_copy);
+    return (PyObject*) self_copy;
 }
 
 static PyObject* Image_transpose(ImageObject* self, PyObject* args, PyObject* kwds) {
     static char* argnames[] = { "method", NULL };
+    bool in_place = false;
     int method;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "i", argnames, &method))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "i|p", argnames, &method, &in_place))
         return NULL;
 
     switch (method) {
         case 0:
             /* PIL.Image.FLIP_LEFT_RIGHT */
-            image_flip_left_right(self);
-            break;
+            if (in_place){
+                image_flip_left_right(self);
+                break;
+            }
+            else{
+                ImageObject* self_copy = _copy(self);
+                image_flip_left_right(self_copy);
+
+                if (PyErr_Occurred()) {
+                    return NULL;
+                } else {
+                    Py_INCREF(self_copy);
+                    return (PyObject*) self_copy;
+                }
+            }
+            
         case 1:
             PyErr_SetString(PyExc_ValueError, "unsupported method: PIL.Image.FLIP_TOP_BOTTOM");
             return NULL;
@@ -178,7 +248,6 @@ static PyObject* Image_copyto(ImageObject* self, PyObject* args, PyObject* kwds)
         goto cleanup;
     }
 
-
 cleanup:
     PyBuffer_Release(&buffer);
 
@@ -189,23 +258,6 @@ cleanup:
     }
 }
 
-static PyObject* Image_copy(ImageObject* self, PyObject *args, PyObject* kwds) {
-    /*xvdp added method to return copy of accimage.Image()*/
-    ImageObject* self_copy;
-    self_copy = PyObject_New(ImageObject, &Image_Type);
-
-    self_copy->buffer = malloc(self->channels * self->width * self->height);
-    memcpy(self_copy->buffer, self->buffer, strlen((char*)self->buffer) + 1);
-
-    self_copy->channels = self->channels;
-    self_copy->height = self->height;
-    self_copy->width = self->width;
-    self_copy->row_stride = self->row_stride;
-    self_copy->y_offset = self->y_offset;
-    self_copy->x_offset = self->x_offset;
-    
-    return (PyObject*) self_copy; 
-}
 
 static PyMethodDef Image_methods[] = {
     { "resize",    (PyCFunction) Image_resize,    METH_VARARGS | METH_KEYWORDS, "Scale image to new size." },
@@ -288,7 +340,6 @@ PyMODINIT_FUNC initaccimage(void) {
 PyMODINIT_FUNC PyInit_accimage(void) {
 #endif
     PyObject* m;
-
     /*
      * Due to cross platform compiler issues the slots must be filled here.
      * It's required for portability to Windows without requiring C++.
