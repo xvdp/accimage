@@ -16,14 +16,3 @@ setup(
     author_email="maratek@gmail.com",
     ext_modules=[accimage],
 )
-"""
-from distutils.core import setup, Extension
-
-accimage = Extension(
-    "accimage",
-    include_dirs=["/opt/jpeg-turbo/include", "/opt/intel/ipp/include"],
-    libraries=["jpeg", "ippi", "ipps"],
-    library_dirs=["/opt/jpeg-turbo/lib32", "/opt/intel/ipp/lib"],
-    sources=["accimagemodule.c", "jpegloader.c", "imageops.c"],
-)
-"""
