@@ -29,12 +29,13 @@ torchvision.set_image_backend('accimage')
 ```
 
 ## Installation
-
-accimage is available on conda-forge, simply run the following to install
-
+Original accimage is available on conda-forge, simply run the following to install
 ```
 $ conda install -c conda-forge accimage
 ```
+As of yet, the original instalation does operations in place, therefore breaks torchvision transformations that require copies: FiveCrop, TenCrop.
+
+
 ## Compilation
 Dowload Intel IPP and jpeg-turbo; install. Ensure that include paths exist.
 ```
