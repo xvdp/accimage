@@ -11,7 +11,7 @@
 
 ## Description
 An accelerated Image loader and preprocessor leveraging [Intel
-IPP](https://software.intel.com/en-us/intel-ipp) and [jpeg-turbo](https://libjpeg-turbo.org/).
+IPP](https://software.intel.com/en-us/intel-ipp) and jpeg-turbo
 
 accimage mimics the PIL API and can be used as a backend for
 [`torchvision`](https://github.com/pytorch/vision).
@@ -45,6 +45,10 @@ $ python setup.py install
 ## Comparative Benchmarking
 opening a (399,899,3) jpeg from disk on a home computer with fast SSD
 
+Conclusions:
+* accimage is faster for everything except just getting headers.
+* I tried both PIL and [pillow-simd compiled with turbo-jpeg](https://gist.github.com/soumith/01da3874bf014d8a8c53406c2b95d56b), and found no difference between regular pillow and pillow-simd, accimage is still much faster.
+* Only drawbacks of accimage is that has many less supported features, and has different syntax.
 ```python
 import PIL
 import cv2
