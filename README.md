@@ -43,7 +43,7 @@ $ python setup.py install
 ```
 
 ## Comparative Benchmarking
-opening a (399,899,3) jpeg from disk on a home computer with fast SSD
+opening a (399,899,3) jpeg from disk on Ubuntu 16, Mother board Speed: 2133 MHz, from 2TB 960 EVO SSD.
 
 Conclusions:
 * accimage is faster for everything except just getting headers.
